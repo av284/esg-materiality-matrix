@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic ESG Materiality Heatmap (SASB)</title>
+    
+    <style>
+        :root {
+            /* Light theme colors for professional look */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --border-main: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent-main: #2563eb; /* Blue for interactivity */
+
+            /* Color scale for ESG Risk (Materiality) Intensity */
+            --risk-low: #f1f5f9;      /* Negligible/Not Material */
+            --risk-medium: #fef08a;   /* Minor Focus */
+            --risk-high: #fbbf24;     /* Significant Liability */
+            --risk-severe: #f87171;   /* Critical Financial Risk */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--bg-secondary);
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-main);
+        }
+
+        .header { margin-bottom: 30px; text-align: center; }
+        .badge { font-size: 11px; text-transform: uppercase; color: var(--accent-main); font-weight: bold; letter-spacing: 1px; }
+        .title { font-size: 28px; margin: 10px 0; font-weight: 800; color: #111827; }
+        .desc { color: var(--text-muted); font-size: 14.5px; max-width: 600px; margin: 0 auto; }
+
+        /* Step 1: Industry Selector Card */
+        .selector-card {
+            background-color: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-main);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .selector-label { font-weight: 700; color: var(--text-main); font-size: 15px; }
+
+        select {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-main);
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            width: 250px;
+            color: var(--text-main);
+        }
+
+        /* Step 2: Heatmap Legend and Grid */
+        .legend-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+            gap: 15px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 6px; font-weight: 500;}
+        .color-box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid #d1d5db; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 ESG Topics */
+            gap: 12px;
+        }
+
+        .tile {
+            aspect-ratio: 1 / 1; /* Keep tiles square */
+            background-color: var(--risk-low);
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .tile:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+        .tile-category { font-size: 10px; text-transform: uppercase; font-weight: bold; color: var(--text-muted); letter-spacing: 0.5px; }
+        .tile-name { font-size: 15px; font-weight: 700; color: #111827; margin-top: 5px; }
+        .tile-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; margin-top: auto;}
+
+        /* Risk Intensity Indicator (Dynamic Color Strip) */
+        .risk-strip {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 30px;
+            border-radius: 4px;
+            background: #cbd5e0; /* Default */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <span class="badge">Sustainable Finance Lab</span>
+            <h1 class="title">ESG Materiality Heatmap (SASB Matrix)</h1>
+            <p class="desc">Dynamically toggle financial materiality focus based on <strong>Industry Classification</strong>. Higher intensity colors indicate a significant ESG liability.</p>
+        </div>
+
+        <!-- Step 1: Sector Selection -->
+        <div class="selector-card">
+            <span class="selector-label">1. Select Industry / Sector Focus:</span>
+            <select id="sector-select"></select>
+        </div>
+
+        <!-- Step 2: Heatmap Visuals -->
+        <div class="legend-container">
+            <div class="legend-item"><span class="color-box" style="background: var(--risk-low);"></span> Negligible</div>
+            <div class="legend-item"><span class="color-box" style="background: var(--risk-medium);"></span> Medium Focus</div>
+            <div class="legend-item"><span class="color-box" style="background: var(--risk-high);"></span> High Risk</div>
+            <div class="legend-item"><span class="color-box" style="background: var(--risk-severe);"></span> Severe Exposure</div>
+        </div>
+
+        <div class="grid" id="heatmap-grid">
+            <!-- Dynamic Grid Generated Here by JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // Core SASB-aligned Dataset: Industry x ESG Issues matrix
+        const materialityData = {
+            metadata: {
+                topics: [
+                    { id: 'env', cat: 'Environmental', name: 'GHG Emissions' , desc: 'Scope 1 emissions, carbon footprint management.' },
+                    { id: 'gov', cat: 'Governance',    name: 'Business Ethics', desc: 'Bribery, corruption, anti-competitive behavior.' },
+                    { id: 'soc', cat: 'Social',        name: 'Labor Practices', desc: 'Labor relations, fair wages, union relations.' },
+                    { id: 'opp', cat: 'Environmental', name: 'Water Security',  desc: 'Freshwater consumption, wastewater disposal.' }
+                ],
+                sectors: [
+                    { id: 'bank', name: 'Financials: Banking' },
+                    { id: 'oil',  name: 'Extractives: Oil & Gas' },
+                    { id: 'tech', name: 'Technology & Comm' },
+                    { id: 'util', name: 'Infrastructure: Utilities' }
+                ]
+            },
+            // Materiality Score Lookup [Sector_ID]: [env_score, gov_score, soc_score, opp_score]
+            // Scores: 0 (Negligible), 1 (Medium), 2 (High), 3 (Severe)
+            matrix: {
+                bank: [1, 3, 2, 0], // Banking: Ethics & Data Security critical, water/carbon low (direct)
+                oil:  [3, 2, 2, 2], // Oil: GHG emissions critical, plus social & water risks.
+                tech: [2, 1, 3, 0], // Tech: Labor practices (supply chain) & emissions (data centers).
+                util: [3, 1, 1, 3]  // Utilities: Absolute reliance on GHG & Water for operations.
+            }
+        };
+
+        // Capture DOM elements
+        const select = document.getElementById('sector-select');
+        const grid = document.getElementById('heatmap-grid');
+
+        // Risk Level Color Mapping
+        const riskColors = ['--risk-low', '--risk-medium', '--risk-high', '--risk-severe'];
+
+        // 1. Initial Setup: Populate Sector Dropdown
+        function initDropdown() {
+            materialityData.metadata.sectors.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.id;
+                option.textContent = s.name;
+                select.appendChild(option);
+            });
+            select.value = 'bank'; // Set default view
+        }
+
+        // 2. Main Setup: Build the 4 base tiles (initial placeholders)
+        function generateInitialGrid() {
+            grid.innerHTML = ''; // Clear grid
+
+            materialityData.metadata.topics.forEach((topic, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.id = `tile-${index}`; // ID needed for dynamic updates
+
+                tile.innerHTML = `
+                    <div class="risk-strip" id="risk-strip-${index}"></div>
+                    <span class="tile-category">${topic.cat}</span>
+                    <h3 class="tile-name">${topic.name}</h3>
+                    <p class="tile-desc">${topic.desc}</p>
+                `;
+                grid.appendChild(tile);
+            });
+        }
+
+        // 3. Reactive update: Recalculate heatmap on Sector change
+        function updateHeatmap() {
+            const selectedSector = select.value;
+            const materialityScores = materialityData.matrix[selectedSector];
+
+            materialityScores.forEach((score, index) => {
+                const tile = document.getElementById(`tile-${index}`);
+                const strip = document.getElementById(`risk-strip-${index}`);
+                const riskColorValue = `var(${riskColors[score]})`;
+
+                // Set dynamic background color and indicator strip
+                tile.style.backgroundColor = riskColorValue;
+                strip.style.backgroundColor = riskColorValue;
+                
+                // Add specific styling changes for Severe risk to improve visibility
+                if (score === 3) {
+                     tile.style.borderColor = '#b91c1c'; // Red border
+                     strip.style.boxShadow = '0 0 8px rgba(185, 28, 28, 0.4)';
+                } else {
+                     tile.style.borderColor = '#e2e8f0'; // Default border
+                     strip.style.boxShadow = 'none';
+                }
+            });
+        }
+
+        // 4. Input Listeners
+        select.addEventListener('change', updateHeatmap);
+
+        // Run baseline setup
+        initDropdown();
+        generateInitialGrid();
+        updateHeatmap(); // Apply default sector data
+
+    </script>
+</body>
+</html>
